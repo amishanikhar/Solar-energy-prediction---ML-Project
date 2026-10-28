@@ -1,0 +1,105 @@
+
+============================================================
+       SOLAR POWER FORECASTING - MODEL TRAINING
+============================================================
+
+--- ORIGINAL DATASET SIZES ---
+Generation dataset: (68778, 7)
+Weather dataset:    (3182, 6)
+
+--- BEFORE CLEANING ---
+Generation missing values: 0
+Weather missing values:    0
+Generation duplicate rows: 0
+Weather duplicate rows:    0
+
+Duplicate weather join keys: 0
+
+--- AFTER MERGING ---
+Merged dataset size: (68774, 7)
+Generation rows not matched: 4
+
+Missing values in model columns:
+AMBIENT_TEMPERATURE    0
+MODULE_TEMPERATURE     0
+IRRADIATION            0
+AC_POWER               0
+dtype: int64
+Duplicate merged rows: 0
+
+--- FINAL CLEANED DATASET ---
+Final dataset size: (68774, 7)
+Total usable rows: 68774
+
+Input features (X): ['AMBIENT_TEMPERATURE', 'MODULE_TEMPERATURE', 'IRRADIATION']
+Target variable (y): AC_POWER
+X shape: (68774, 3)
+y shape: (68774,)
+Date range: 2020-05-15 00:00:00 -> 2020-06-17 23:45:00
+
+--- TRAIN-TEST SPLIT (chronological by day) ---
+Training days: 27 (2020-05-15 to 2020-06-10)
+Testing days:  7 (2020-06-11 to 2020-06-17)
+Training rows: 54034
+Testing rows:  14740
+Training percentage: 78.57 %
+Testing percentage:  21.43 %
+
+============================================================
+         TRAINING AND EVALUATING MODELS
+============================================================
+
+Training Decision Tree...
+Decision Tree training completed.
+
+Training SVR...
+SVR training completed.
+
+Training KNN...
+KNN training completed.
+
+Training Random Forest...
+Random Forest training completed.
+
+============================================================================
+                  MODEL COMPARISON TABLE
+============================================================================
+        Model     MAE    RMSE     R2
+          SVR 16.9753 49.7072 0.9809
+Random Forest 19.6951 53.0483 0.9782
+Decision Tree 21.5802 57.2118 0.9746
+          KNN 24.9462 58.9255 0.9731
+
+MAE: lower is better
+RMSE: lower is better
+R2: higher is generally better
+
+--- ACTUAL VS PREDICTED POWER (10 TEST SAMPLES) ---
+ Actual Power  Predicted Power  Absolute Error
+          0.0            0.125           0.125
+          0.0            0.125           0.125
+          0.0            0.125           0.125
+          0.0            0.125           0.125
+          0.0            0.125           0.125
+          0.0            0.125           0.125
+          0.0            0.125           0.125
+          0.0            0.125           0.125
+          0.0            0.125           0.125
+          0.0            0.125           0.125
+Figures saved in: /home/claude/solar_project/figures
+
+============================================================
+                 BEST MODEL SELECTED
+============================================================
+Best model: SVR
+Best RMSE: 49.7072
+Corresponding MAE: 16.9753
+Corresponding R2: 0.9809
+
+--- FILES SAVED ---
+Model:      /home/claude/solar_project/best_solar_model.pkl
+Scaler:     /home/claude/solar_project/scaler.pkl
+Thresholds: /home/claude/solar_project/generation_thresholds.json
+
+All four models evaluated successfully!
+Training completed successfully!
