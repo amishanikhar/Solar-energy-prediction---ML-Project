@@ -1,0 +1,798 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SolarCast | Power Forecast</title>
+
+  <style>
+    :root {
+      --bg: #f4f7f3;
+      --surface: #ffffff;
+      --ink: #172b25;
+      --muted: #687a72;
+      --green: #176b4d;
+      --green-dark: #104a36;
+      --lime: #d9f36a;
+      --line: #e1e9e2;
+      --shadow: 0 18px 50px rgba(20, 61, 43, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 20px clamp(20px, 5vw, 72px);
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 19px;
+      font-weight: 800;
+    }
+
+    .brand-icon {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: var(--lime);
+      font-size: 23px;
+    }
+
+    .top-label {
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 42px 22px 56px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.35fr .65fr;
+      gap: 28px;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+
+    .eyebrow {
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 1.7px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 680px;
+      margin: 12px 0;
+      font-size: clamp(32px, 4.4vw, 54px);
+      line-height: 1.05;
+      letter-spacing: -2px;
+    }
+
+    h1 span { color: var(--green); }
+
+    .hero p {
+      max-width: 650px;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    .hero-note {
+      min-height: 150px;
+      padding: 23px;
+      border-radius: 24px;
+      background: var(--green-dark);
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-note:after {
+      content: "☀";
+      position: absolute;
+      right: 12px;
+      bottom: -42px;
+      font-size: 150px;
+      color: rgba(217,243,106,.15);
+    }
+
+    .hero-note strong {
+      display: block;
+      position: relative;
+      z-index: 1;
+      font-size: 17px;
+      margin-bottom: 9px;
+    }
+
+    .hero-note p {
+      position: relative;
+      z-index: 1;
+      color: #d2e4d9;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: 1fr .88fr;
+      gap: 22px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      padding: 24px 26px 19px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-head h2 {
+      margin: 0 0 7px;
+      font-size: 19px;
+    }
+
+    .panel-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .panel-body { padding: 25px 26px 27px; }
+
+    .control { margin-bottom: 27px; }
+
+    .control:last-of-type { margin-bottom: 23px; }
+
+    .control-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+
+    label {
+      font-size: 14px;
+      font-weight: 750;
+    }
+
+    .value-pill {
+      min-width: 100px;
+      padding: 7px 10px;
+      text-align: center;
+      border-radius: 10px;
+      color: var(--green-dark);
+      background: #edf6e9;
+      font-size: 13px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--green);
+      cursor: pointer;
+    }
+
+    .range-ends {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+      color: #87958e;
+      font-size: 11px;
+    }
+
+    .manual-input-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .manual-input-row label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    input[type="number"] {
+      width: 155px;
+      max-width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: white;
+      color: var(--ink);
+      font: inherit;
+      font-size: 13px;
+    }
+
+    input[type="number"]:focus {
+      outline: 2px solid var(--green);
+      outline-offset: 1px;
+    }
+
+    .helper {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .submit-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      width: 100%;
+      padding: 15px 18px;
+      border: 0;
+      border-radius: 13px;
+      background: var(--green);
+      color: white;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background .18s, transform .18s;
+    }
+
+    .submit-btn:hover {
+      background: var(--green-dark);
+      transform: translateY(-1px);
+    }
+
+    .result-top {
+      padding: 27px;
+      background: linear-gradient(135deg, #124d38, #207653);
+      color: white;
+    }
+
+    .result-kicker {
+      color: #cbe5d5;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+    }
+
+    .result-top h2 {
+      margin: 15px 0 5px;
+      font-size: clamp(35px, 4vw, 48px);
+      letter-spacing: -1.8px;
+      line-height: 1.1;
+      overflow-wrap: anywhere;
+    }
+
+    .result-top h2 small {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0;
+      color: #d8eee0;
+    }
+
+    .result-top p {
+      margin: 10px 0 0;
+      color: #d4e8dc;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .result-body { padding: 24px 26px 27px; }
+
+    .result-body h3 {
+      margin: 0 0 15px;
+      font-size: 15px;
+    }
+
+    .metric-list { display: grid; gap: 11px; }
+
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .metric strong {
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    .empty-state {
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 35px 16px 28px;
+    }
+
+    .empty-icon {
+      display: grid;
+      place-items: center;
+      width: 62px;
+      height: 62px;
+      border-radius: 20px;
+      margin-bottom: 15px;
+      background: #f0f6e5;
+      font-size: 30px;
+    }
+
+    .empty-state h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+    }
+
+    .empty-state p {
+      max-width: 300px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 22px;
+    }
+
+    .info-card {
+      padding: 21px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+    }
+
+    .info-icon { font-size: 22px; }
+
+    .info-card h3 {
+      margin: 12px 0 7px;
+      font-size: 14px;
+    }
+
+    .info-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .footnote {
+      margin-top: 22px;
+      padding: 15px 17px;
+      border-left: 3px solid #b7d85c;
+      border-radius: 0 10px 10px 0;
+      background: #eef4e7;
+      color: #526359;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    footer {
+      padding: 22px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      text-align: center;
+      font-size: 12px;
+    }
+
+    @media (max-width: 850px) {
+      .hero, .dashboard { grid-template-columns: 1fr; }
+      .hero-note { min-height: 120px; }
+      .info-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 500px) {
+      main { padding: 28px 14px 38px; }
+      .topbar { padding: 15px; }
+      .top-label { display: none; }
+      .panel-head, .panel-body, .result-body, .result-top {
+        padding-left: 19px;
+        padding-right: 19px;
+      }
+      h1 { letter-spacing: -1.3px; }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">☀</div>
+      <span>SolarCast <span style="color:var(--green);font-weight:500">/ Forecast Studio</span></span>
+    </div>
+    <div class="top-label">ML-POWERED FORECASTING</div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Renewable energy analytics</div>
+        <h1>Turn sunlight into <span>smart forecasts.</span></h1>
+        <p>
+          Explore how weather conditions can affect solar power output.
+          Drag the sliders or enter exact values to get a machine-learning forecast.
+        </p>
+      </div>
+
+      <aside class="hero-note">
+        <strong>Forecast before you generate.</strong>
+        <p>
+          SolarCast uses a trained machine-learning model (best of four compared) to estimate power
+          output from ambient temperature, module temperature and irradiation.
+        </p>
+      </aside>
+    </section>
+
+    {% if error %}
+    <div class="footnote" style="border-left-color:#c0392b;background:#fdecea;color:#7b1f14;margin-bottom:18px">
+      <strong>Invalid input:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <section class="dashboard">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Weather conditions</h2>
+          <p>Drag the sliders or type an exact value in the input boxes.</p>
+        </div>
+
+        <div class="panel-body">
+          <form method="POST" action="/predict">
+
+            <!-- Ambient temperature -->
+            <div class="control">
+              <div class="control-head">
+                <label for="amb_temp">Ambient temperature</label>
+                <output class="value-pill" id="amb_temp_value">
+                  {{ amb_temp if amb_temp is defined else 28.5 }} °C
+                </output>
+              </div>
+
+              <input
+                id="amb_temp_slider"
+                type="range"
+                min="0"
+                max="50"
+                step="0.000001"
+                value="{{ amb_temp if amb_temp is defined else 28.5 }}"
+                oninput="syncFromSlider('amb_temp', this.value, ' °C', 6)"
+              >
+
+              <div class="range-ends">
+                <span>0 °C</span>
+                <span>50 °C</span>
+              </div>
+
+              <div class="manual-input-row">
+                <label for="amb_temp">Or type value (°C)</label>
+                <input
+                  id="amb_temp"
+                  name="amb_temp"
+                  type="number"
+                  min="0"
+                  max="50"
+                  step="any"
+                  value="{{ amb_temp if amb_temp is defined else 28.5 }}"
+                  required
+                  oninput="syncFromNumber('amb_temp', ' °C', 6)"
+                >
+              </div>
+
+              <p class="helper">
+                The surrounding air temperature near the solar plant.
+              </p>
+            </div>
+
+            <!-- Module temperature -->
+            <div class="control">
+              <div class="control-head">
+                <label for="mod_temp">Solar module temperature</label>
+                <output class="value-pill" id="mod_temp_value">
+                  {{ mod_temp if mod_temp is defined else 35.0 }} °C
+                </output>
+              </div>
+
+              <input
+                id="mod_temp_slider"
+                type="range"
+                min="0"
+                max="80"
+                step="0.000001"
+                value="{{ mod_temp if mod_temp is defined else 35.0 }}"
+                oninput="syncFromSlider('mod_temp', this.value, ' °C', 6)"
+              >
+
+              <div class="range-ends">
+                <span>0 °C</span>
+                <span>80 °C</span>
+              </div>
+
+              <div class="manual-input-row">
+                <label for="mod_temp">Or type value (°C)</label>
+                <input
+                  id="mod_temp"
+                  name="mod_temp"
+                  type="number"
+                  min="0"
+                  max="80"
+                  step="any"
+                  value="{{ mod_temp if mod_temp is defined else 35.0 }}"
+                  required
+                  oninput="syncFromNumber('mod_temp', ' °C', 6)"
+                >
+              </div>
+
+              <p class="helper">
+                The temperature of the solar panel itself.
+              </p>
+            </div>
+
+            <!-- Solar irradiation -->
+            <div class="control">
+              <div class="control-head">
+                <label for="irradiation">Solar irradiation</label>
+                <output class="value-pill" id="irradiation_value">
+                  {{ irradiation if irradiation is defined else 0.65 }} kW/m²
+                </output>
+              </div>
+
+              <input
+                id="irradiation_slider"
+                type="range"
+                min="0"
+                max="1.25"
+                step="0.000001"
+                value="{{ irradiation if irradiation is defined else 0.65 }}"
+                oninput="syncFromSlider('irradiation', this.value, ' kW/m²', 6)"
+              >
+
+              <div class="range-ends">
+                <span>0 kW/m²</span>
+                <span>1.25 kW/m²</span>
+              </div>
+
+              <div class="manual-input-row">
+                <label for="irradiation">Or type value</label>
+                <input
+                  id="irradiation"
+                  name="irradiation"
+                  type="number"
+                  min="0"
+                  max="1.25"
+                  step="any"
+                  value="{{ irradiation if irradiation is defined else 0.65 }}"
+                  required
+                  oninput="syncFromNumber('irradiation', ' kW/m²', 6)"
+                >
+              </div>
+
+              <p class="helper">
+                The solar energy reaching the panel. More irradiation
+                often means more available power.
+              </p>
+            </div>
+
+            <button class="submit-btn" type="submit">
+              ☀ &nbsp; Forecast power output <span>→</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Prediction results -->
+      <div class="panel result-panel">
+        {% if prediction %}
+          <div class="result-top">
+            <div class="result-kicker">Your forecast is ready &middot; {{ generation_status }}</div>
+            <h2>{{ prediction.split(' ')[0] }} <small>predicted AC power</small></h2>
+            <p>
+              This estimate is generated by your saved machine-learning
+              model for the conditions selected on the left.
+            </p>
+          </div>
+
+          <div class="result-body">
+            <h3>Conditions used for this forecast</h3>
+
+            <div class="metric-list">
+              <div class="metric">
+                <span>Ambient temperature</span>
+                <strong>{{ amb_temp }} °C</strong>
+              </div>
+
+              <div class="metric">
+                <span>Module temperature</span>
+                <strong>{{ mod_temp }} °C</strong>
+              </div>
+
+              <div class="metric">
+                <span>Solar irradiation</span>
+                <strong>{{ irradiation }} kW/m²</strong>
+              </div>
+
+              <div class="metric">
+                <span>Prediction type</span>
+                <strong>AC power per inverter (kW)</strong>
+              </div>
+
+              <div class="metric">
+                <span>Generation status</span>
+                <strong>{{ generation_status }}</strong>
+              </div>
+
+              <div class="metric">
+                <span>Low / High cut-offs</span>
+                <strong>{{ low_threshold }} / {{ high_threshold }} kW</strong>
+              </div>
+            </div>
+
+            <div class="footnote">
+              <strong>How to read this:</strong>
+              kW measures power at the predicted operating conditions,
+              not total energy generated over a day. Real output can differ
+              due to panel capacity, shading, dust and other conditions.
+            </div>
+          </div>
+
+        {% else %}
+          <div class="panel-head">
+            <h2>Forecast results</h2>
+            <p>Your model output will appear here after you submit the conditions.</p>
+          </div>
+
+          <div class="empty-state">
+            <div class="empty-icon">📈</div>
+            <h3>Ready when you are</h3>
+            <p>
+              Adjust the sliders or type your values, then select
+              <strong>Forecast power output</strong>.
+            </p>
+          </div>
+
+          <div class="result-body">
+            <h3>What the model considers</h3>
+
+            <div class="metric-list">
+              <div class="metric">
+                <span>Air temperature</span>
+                <strong>Ambient °C</strong>
+              </div>
+
+              <div class="metric">
+                <span>Panel temperature</span>
+                <strong>Module °C</strong>
+              </div>
+
+              <div class="metric">
+                <span>Sunlight intensity</span>
+                <strong>Irradiation</strong>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="info-grid">
+      <article class="info-card">
+        <div class="info-icon">🌡️</div>
+        <h3>Temperature matters</h3>
+        <p>
+          Air and panel temperatures help the model understand the
+          operating conditions of the solar installation.
+        </p>
+      </article>
+
+      <article class="info-card">
+        <div class="info-icon">☀️</div>
+        <h3>Sunlight drives generation</h3>
+        <p>
+          Irradiation represents the solar energy reaching the panel
+          and is an important input for power estimation.
+        </p>
+      </article>
+
+      <article class="info-card">
+        <div class="info-icon">🧠</div>
+        <h3>Machine-learning estimate</h3>
+        <p>
+          The saved best-performing model learned patterns from historical
+          generation and weather data. It predicts from learned patterns
+          rather than a fixed output value.
+        </p>
+      </article>
+    </section>
+
+    <div class="footnote">
+      <strong>Project note:</strong>
+      This is an educational forecasting tool. Predictions depend on the
+      training dataset and input ranges; validate results before using them
+      for operational decisions.
+    </div>
+  </main>
+
+  <footer>
+    SolarCast · Solar Power Generation &amp; Output Forecasting · Machine Learning Project
+  </footer>
+
+  <script>
+    // When the slider moves, update the typed input and displayed value.
+    function syncFromSlider(id, value, unit, decimals) {
+      const numberInput = document.getElementById(id);
+      const output = document.getElementById(id + "_value");
+
+      numberInput.value = value;
+      output.textContent = Number(value).toFixed(decimals) + unit;
+    }
+
+    // When the user types, update the slider and displayed value.
+    function syncFromNumber(id, unit, decimals) {
+      const numberInput = document.getElementById(id);
+      const slider = document.getElementById(id + "_slider");
+      const output = document.getElementById(id + "_value");
+
+      if (numberInput.value === "") {
+        output.textContent = "--" + unit;
+        return;
+      }
+
+      const value = Number(numberInput.value);
+
+      if (!Number.isFinite(value)) return;
+
+      // Keep the slider within its permitted range.
+      if (value >= Number(slider.min) && value <= Number(slider.max)) {
+        slider.value = value;
+      }
+
+      output.textContent = value.toFixed(decimals) + unit;
+    }
+  </script>
+</body>
+</html>
