@@ -1,17 +1,15 @@
-
 from pathlib import Path
 import json
 import joblib
 import numpy as np
 import pandas as pd
 
-from sklearn.tree import DecisionTreeRegressor
 from sklearn.svm import SVR
-from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
+from xgboost import XGBRegressor
+from catboost import CatBoostRegressor
 
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 
 
@@ -52,10 +50,11 @@ def save_figures(results_df, y_true, y_pred, best_name):
     out.mkdir(exist_ok=True)
 
     fig, axes = plt.subplots(1, 3, figsize=(13, 4))
-    for ax, metric in zip(axes, ["MAE", "RMSE", "R2"]):
+    for ax, metric in zip(axes, ["MAE", "RMSE", "R2 Score"]):
         ax.bar(results_df["Model"], results_df[metric], color="#176b4d")
         ax.set_title(metric)
         ax.tick_params(axis="x", rotation=25)
+
     fig.suptitle("Model comparison on unseen test days")
     fig.tight_layout()
     fig.savefig(out / "model_comparison.png", dpi=200)
@@ -71,6 +70,7 @@ def save_figures(results_df, y_true, y_pred, best_name):
     fig.tight_layout()
     fig.savefig(out / "actual_vs_predicted.png", dpi=200)
     plt.close(fig)
+
     print("Figures saved in:", out)
 
 
@@ -127,8 +127,6 @@ def main():
     # 4. CLEAN DATE AND JOIN KEY COLUMNS
     # ==========================================
 
-    # The generation file mixes "15-05-2020 00:00" and "1/6/2020 0:00"
-    # (both day-first). A single fixed format would silently drop ~37% rows.
     generation["DATE_TIME"] = pd.to_datetime(
         generation["DATE_TIME"],
         format="mixed",
@@ -136,7 +134,6 @@ def main():
         errors="coerce"
     )
 
-    # Weather file uses month-first dates, e.g. "5/15/2020 0:00"
     weather["DATE_TIME"] = pd.to_datetime(
         weather["DATE_TIME"],
         format="%m/%d/%Y %H:%M",
@@ -148,16 +145,17 @@ def main():
     weather = weather.dropna(subset=JOIN_KEYS).copy()
 
     # Keep only columns required for this project
-    # SOURCE_KEY (inverter id) is kept so that different inverters with the same
-    # output (e.g. 0 kW at night) are NOT mistaken for duplicate rows.
-    generation = generation[JOIN_KEYS + ["SOURCE_KEY", TARGET]].copy()
+    # SOURCE_KEY distinguishes different inverters.
+    generation = generation[
+        JOIN_KEYS + ["SOURCE_KEY", TARGET]
+    ].copy()
+
     weather = weather[JOIN_KEYS + FEATURES].copy()
 
     # Convert model columns to numeric values
-    for column in [TARGET]:
-        generation[column] = pd.to_numeric(
-            generation[column], errors="coerce"
-        )
+    generation[TARGET] = pd.to_numeric(
+        generation[TARGET], errors="coerce"
+    )
 
     for column in FEATURES:
         weather[column] = pd.to_numeric(
@@ -226,7 +224,6 @@ def main():
     # 7. SELECT FEATURES AND TARGET
     # ==========================================
 
-    # Sort by time so the split can be chronological
     data = data.sort_values("DATE_TIME").reset_index(drop=True)
 
     X = data[FEATURES]
@@ -236,16 +233,18 @@ def main():
     print("Target variable (y):", TARGET)
     print("X shape:", X.shape)
     print("y shape:", y.shape)
-    print("Date range:", data["DATE_TIME"].min(), "->", data["DATE_TIME"].max())
+    print(
+        "Date range:",
+        data["DATE_TIME"].min(),
+        "->",
+        data["DATE_TIME"].max()
+    )
 
     # ==========================================
-    # 8. TRAIN-TEST SPLIT (CHRONOLOGICAL, 80/20 BY DAY)
+    # 8. CHRONOLOGICAL TRAIN-TEST SPLIT
     # ==========================================
-    # Readings are 15-minute time series and 22 inverters share the same
-    # weather at each timestamp. A random split would put near-identical rows
-    # in both train and test (data leakage -> inflated scores), so we train on
-    # the earlier days and test on the later, unseen days.
 
+    # Split by day to reduce data leakage.
     days = sorted(data["DATE_TIME"].dt.date.unique())
     split_index = int(len(days) * 0.80)
     train_days = set(days[:split_index])
@@ -256,8 +255,16 @@ def main():
     X_test, y_test = X[~is_train], y[~is_train]
 
     print("\n--- TRAIN-TEST SPLIT (chronological by day) ---")
-    print("Training days:", split_index, f"({days[0]} to {days[split_index - 1]})")
-    print("Testing days: ", len(days) - split_index, f"({days[split_index]} to {days[-1]})")
+    print(
+        "Training days:",
+        split_index,
+        f"({days[0]} to {days[split_index - 1]})"
+    )
+    print(
+        "Testing days: ",
+        len(days) - split_index,
+        f"({days[split_index]} to {days[-1]})"
+    )
     print("Training rows:", len(X_train))
     print("Testing rows: ", len(X_test))
     print(
@@ -280,24 +287,37 @@ def main():
     # ==========================================
 
     models = {
-        "Decision Tree": DecisionTreeRegressor(
-            random_state=42
-        ),
-
         "SVR": SVR(
             kernel="rbf",
             C=100,
             epsilon=0.1
         ),
 
-        "KNN": KNeighborsRegressor(
-            n_neighbors=5
-        ),
-
         "Random Forest": RandomForestRegressor(
-            n_estimators=100,
+            n_estimators=200,
             random_state=42,
             n_jobs=-1
+        ),
+
+        "XGBoost": XGBRegressor(
+            n_estimators=500,
+            learning_rate=0.03,
+            max_depth=6,
+            subsample=0.8,
+            colsample_bytree=0.9,
+            objective="reg:squarederror",
+            random_state=42,
+            n_jobs=-1
+        ),
+
+        "CatBoost": CatBoostRegressor(
+            iterations=500,
+            learning_rate=0.03,
+            depth=6,
+            loss_function="RMSE",
+            random_seed=42,
+            verbose=False,
+            allow_writing_files=False
         )
     }
 
@@ -316,9 +336,29 @@ def main():
 
         print(f"\nTraining {name}...")
 
-        model.fit(X_train_scaled, y_train)
+        # Sample SVR training data if the dataset is large.
+        if name == "SVR" and len(X_train_scaled) > 8000:
+            rng = np.random.RandomState(42)
+            sample_indices = np.sort(
+                rng.choice(
+                    len(X_train_scaled),
+                    size=8000,
+                    replace=False
+                )
+            )
 
-        # Power cannot be negative (same rule the website applies)
+            model.fit(
+                X_train_scaled[sample_indices],
+                y_train.iloc[sample_indices]
+            )
+
+            print(
+                "SVR fit uses a reproducible 8,000-row sample for runtime."
+            )
+        else:
+            model.fit(X_train_scaled, y_train)
+
+        # Power cannot be negative.
         predictions = np.maximum(model.predict(X_test_scaled), 0)
 
         mae = mean_absolute_error(y_test, predictions)
@@ -329,7 +369,8 @@ def main():
             "Model": name,
             "MAE": mae,
             "RMSE": rmse,
-            "R2": r2
+            "R2 Score": r2,
+            "R2 (%)": r2 * 100
         })
 
         trained_models[name] = model
@@ -342,15 +383,17 @@ def main():
 
     results_df = pd.DataFrame(results)
 
-    # Lowest RMSE is our primary selection criterion
+    # Lowest RMSE determines the best model.
     results_df = results_df.sort_values(
         by="RMSE",
         ascending=True
     ).reset_index(drop=True)
 
-    print("\n" + "=" * 76)
-    print("                  MODEL COMPARISON TABLE")
-    print("=" * 76)
+    results_df.insert(0, "Rank", range(1, len(results_df) + 1))
+
+    print("\n" + "=" * 100)
+    print("              SOLAR POWER FORECASTING - MODEL COMPARISON")
+    print("=" * 100)
 
     print(
         results_df.to_string(
@@ -358,14 +401,17 @@ def main():
             formatters={
                 "MAE": "{:.4f}".format,
                 "RMSE": "{:.4f}".format,
-                "R2": "{:.4f}".format
+                "R2 Score": "{:.4f}".format,
+                "R2 (%)": "{:.2f}%".format
             }
         )
     )
 
-    print("\nMAE: lower is better")
-    print("RMSE: lower is better")
-    print("R2: higher is generally better")
+    print("=" * 100)
+    print("MAE       : lower is better")
+    print("RMSE      : lower is better (used to rank models)")
+    print("R2 Score  : closer to 1 is generally better")
+    print("R2 (%)    : R2 Score multiplied by 100; NOT conventional accuracy")
 
     # ==========================================
     # 12. SELECT AND SAVE THE BEST MODEL
@@ -374,8 +420,10 @@ def main():
     best_model_name = results_df.iloc[0]["Model"]
     best_model = trained_models[best_model_name]
 
-    # Compare actual and predicted values on unseen test data
-    best_predictions = np.maximum(best_model.predict(X_test_scaled), 0)
+    # Compare actual and predicted values on unseen test data.
+    best_predictions = np.maximum(
+        best_model.predict(X_test_scaled), 0
+    )
 
     comparison = pd.DataFrame({
         "Actual Power": y_test.values[:10],
@@ -391,15 +439,25 @@ def main():
     print(comparison.round(3).to_string(index=False))
 
     results_df.to_csv(BASE_DIR / "model_comparison.csv", index=False)
-    save_figures(results_df, y_test.values, best_predictions, best_model_name)
+
+    save_figures(
+        results_df,
+        y_test.values,
+        best_predictions,
+        best_model_name
+    )
 
     joblib.dump(best_model, MODEL_FILE)
     joblib.dump(scaler, SCALER_FILE)
 
-    # Thresholds used by the website to show generation status
-    # Night-time readings are all 0 kW, so quantiles of ALL rows would give
-    # low = 0. Thresholds are therefore taken from daytime (AC_POWER > 0) rows.
+    # Calculate generation thresholds using daytime power.
     daytime_power = y_train[y_train > 0]
+
+    if daytime_power.empty:
+        raise ValueError(
+            "No positive daytime power values found in training data."
+        )
+
     thresholds = {
         "low": float(daytime_power.quantile(1 / 3)),
         "high": float(daytime_power.quantile(2 / 3))
@@ -422,8 +480,12 @@ def main():
         f"{results_df.iloc[0]['MAE']:.4f}"
     )
     print(
-        "Corresponding R2:",
-        f"{results_df.iloc[0]['R2']:.4f}"
+        "Corresponding R2 Score:",
+        f"{results_df.iloc[0]['R2 Score']:.4f}"
+    )
+    print(
+        "R2 Score (percentage, not conventional accuracy):",
+        f"{results_df.iloc[0]['R2 (%)']:.2f}%"
     )
 
     print("\n--- FILES SAVED ---")
